@@ -1,36 +1,65 @@
-# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
-
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
-name: Java CI with Maven
+name: Multi-Java Build and Release
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - 'v*' # 当推送以v开头的标签时触发
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        java: [ '8', '11', '17' , '24'] # 这里配置你想要支持的Java版本
+    name: Build with Java ${{ matrix.java }}
+    
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up JDK 24
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK ${{ matrix.java }}
       uses: actions/setup-java@v3
       with:
-        java-version: '24'
+        java-version: ${{ matrix.java }}
         distribution: 'temurin'
-        cache: maven
+        cache: 'maven'
+    
     - name: Build with Maven
       run: mvn -B package --file pom.xml
-      env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-    - name: Archive Jar file
+    
+    - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: jar-with-dependencies
-        path: ./target/*-jar-with-dependencies.jar  # 指定二进制文件的路径
+        name: java${{ matrix.java }}.jar
+        path: target/*.jar # 根据你的项目结构调整路径
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts
+    
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+    
+    - name: Upload Release Assets
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./artifacts/app-java${{ matrix.java }}.jar
+        asset_name: java${{ matrix.java }}.jar
+        asset_content_type: application/java-archive
+      for: ${{ fromJson(needs.build.outputs.matrix) }}
