@@ -1,75 +1,63 @@
-name: Multi-Java Build and Release
+name: Multi-Java Build and Upload to Release
 
 on:
   push:
     tags:
-      - 'v*' # 当推送以v开头的标签时触发
+      - '*'  # 匹配所有 tags（或 'v*' 匹配 v 开头的 tags）
 
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: ['11', '17' ] # 这里配置你想要支持的Java版本
+        java: ['11', '17']  # 支持多个 Java 版本
     name: Build with Java ${{ matrix.java }}
     
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up JDK ${{ matrix.java }}
-      uses: actions/setup-java@v3
-      with:
-        java-version: ${{ matrix.java }}
-        distribution: 'temurin'
-        cache: 'maven'
-    
-    - name: Build with Maven
-      run: mvn -B package --file pom.xml
-    
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: Fiora-java${{ matrix.java }}.jar
-        path: target/*.jar # 根据你的项目结构调整路径
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: 'temurin'
+          cache: 'maven'
+      
+      - name: Build with Maven
+        run: mvn -B package --file pom.xml
+      
+      - name: Upload Artifact (Java ${{ matrix.java }})
+        uses: actions/upload-artifact@v3
+        with:
+          name: Fiora-java${{ matrix.java }}.jar
+          path: target/*.jar  # 修改为你的 JAR 路径
 
-  release:
+  upload-to-release:
     needs: build
     runs-on: ubuntu-latest
     
     steps:
-    - name: Download all artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: artifacts
-    
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-    
-    
-    - name: Upload Java 11 Artifact
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./artifacts/Fiora-java11.jar
-        asset_name: Fiora-java11.jar
-        asset_content_type: application/java-archive
-    
-    - name: Upload Java 17 Artifact
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./artifacts/Fiora-java17.jar
-        asset_name: Fiora-java17.jar
-        asset_content_type: application/java-archive
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+      
+      - name: Find Tag Name
+        id: get-tag
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          echo "Current tag: $TAG_NAME"
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+      
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get-tag.outputs.tag_name }}
+          files: |
+            artifacts/Fiora-java8.jar
+            artifacts/Fiora-java11.jar
+            artifacts/Fiora-java17.jar
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
