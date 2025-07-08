@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: [ '8', '11', '17' ] # 这里配置你想要支持的Java版本
+        java: ['11', '17' ] # 这里配置你想要支持的Java版本
     name: Build with Java ${{ matrix.java }}
     
     steps:
@@ -46,22 +46,13 @@ jobs:
       id: create_release
       uses: actions/create-release@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
       with:
         tag_name: ${{ github.ref }}
         release_name: Release ${{ github.ref }}
         draft: false
         prerelease: false
     
-    - name: Upload Java 8 Artifact
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./artifacts/Fiora-java8.jar
-        asset_name: Fiora-java8.jar
-        asset_content_type: application/java-archive
     
     - name: Upload Java 11 Artifact
       uses: actions/upload-release-asset@v1
