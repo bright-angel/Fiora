@@ -27,7 +27,7 @@ jobs:
         run: mvn -B package --file pom.xml
       
       - name: Upload Artifact (Java ${{ matrix.java }})
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Fiora-java${{ matrix.java }}.jar
           path: target/*.jar  # 修改为你的 JAR 路径
