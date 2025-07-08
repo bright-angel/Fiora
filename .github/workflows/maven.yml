@@ -54,7 +54,6 @@ jobs:
         with:
           tag_name: ${{ steps.get-tag.outputs.tag_name }}
           files: |
-            artifacts/Fiora-java8.jar
             artifacts/Fiora-java11.jar
             artifacts/Fiora-java17.jar
           draft: false
